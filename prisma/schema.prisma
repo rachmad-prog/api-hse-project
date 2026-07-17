@@ -1,0 +1,186 @@
+// HSE Management System - Prisma Schema
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  SUPERADMIN
+  ADMIN
+  SUPERVISOR
+  USER
+}
+
+enum LicenseType {
+  TRIAL
+  BASIC
+  PRO
+  ENTERPRISE
+}
+
+enum ReportStatus {
+  OPEN
+  IN_PROGRESS
+  CLOSED
+}
+
+enum ApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model Company {
+  id        Int       @id @default(autoincrement())
+  name      String
+  address   String?
+  logoUrl   String?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  users         User[]
+  license       License?
+  hazardReports HazardReport[]
+}
+
+model License {
+  id        Int         @id @default(autoincrement())
+  key       String      @unique
+  type      LicenseType @default(TRIAL)
+  maxUsers  Int         @default(5)
+  isActive  Boolean     @default(true)
+  issuedAt  DateTime    @default(now())
+  expiresAt DateTime
+
+  companyId Int         @unique
+  company   Company     @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  name         String
+  email        String   @unique
+  password     String
+  role         Role     @default(USER)
+  position     String?
+  phone        String?
+  avatarUrl    String?
+  isActive     Boolean  @default(true)
+  refreshToken String?
+
+  companyId Int?
+  company   Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  fitToWorks    FitToWork[]
+  hazardReports HazardReport[]
+  take5s        Take5[]
+  tasklists     Tasklist[]
+  ptos          PTO[]
+  inspeksis     Inspeksi[]
+}
+
+model FitToWork {
+  id            Int      @id @default(autoincrement())
+  userId        Int
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  status        String
+  bloodPressure String?
+  heartRate     Int?
+  temperature   Float?
+  fatigueLevel  String?
+  notes         String?
+  signatureUrl  String?
+
+  createdAt DateTime @default(now())
+}
+
+model HazardReport {
+  id          Int          @id @default(autoincrement())
+  userId      Int
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  companyId   Int?
+  company     Company?     @relation(fields: [companyId], references: [id], onDelete: SetNull)
+
+  title            String
+  description      String
+  location         String
+  category         String?
+  riskLevel        String
+  photoUrl         String?
+  status           ReportStatus @default(OPEN)
+  correctiveAction String?
+  closedAt         DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Take5 {
+  id       Int    @id @default(autoincrement())
+  userId   Int
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  task     String
+  location String?
+  hazards  String
+  controls String
+  isSafe   Boolean @default(true)
+
+  createdAt DateTime @default(now())
+}
+
+model Tasklist {
+  id          Int       @id @default(autoincrement())
+  userId      Int
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  title       String
+  description String?
+  priority    String    @default("Medium")
+  dueDate     DateTime?
+  status      String    @default("Pending")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PTO {
+  id         Int            @id @default(autoincrement())
+  userId     Int
+  user       User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type       String
+  startDate  DateTime
+  endDate    DateTime
+  reason     String?
+  status     ApprovalStatus @default(PENDING)
+  approvedBy Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Inspeksi {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  area      String
+  checklist Json
+  score     Int?
+  photoUrl  String?
+
+  createdAt DateTime @default(now())
+}
